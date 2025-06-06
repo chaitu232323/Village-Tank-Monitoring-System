@@ -1,0 +1,58 @@
+#define BLYNK_TEMPLATE_ID "Your_Template_ID"
+#define BLYNK_DEVICE_NAME "VillageTankMonitor"
+#define BLYNK_AUTH_TOKEN "Your_Auth_Token"
+
+#define BLYNK_PRINT Serial
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "Your_WiFi_Name";
+char pass[] = "Your_WiFi_Password";
+
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+
+long duration;
+float distance;
+
+BlynkTimer timer;
+
+void measureWaterLevel() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  duration = pulseIn(ECHO_PIN, HIGH);
+  distance = duration * 0.034 / 2;  // in cm
+
+  float waterLevel = 100 - distance;  // Assuming tank height = 100cm
+
+  Serial.print("Water Level: ");
+  Serial.print(waterLevel);
+  Serial.println(" %");
+
+  Blynk.virtualWrite(V0, waterLevel);
+
+  if (waterLevel < 20) {
+    Blynk.logEvent("low_water", "Warning: Tank water level is below 20%!");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(10000L, measureWaterLevel); // every 10 seconds
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
